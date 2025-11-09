@@ -1,265 +1,186 @@
-# Black-Scholes Greeks: Comprehensive Validation Study
+# Black‑Scholes Greeks: Build & Run Guide
 
-## Overview
+This file focuses on how to build, run and inspect results for the repository.
 
-This project implements and rigorously validates three methods for computing Black-Scholes option Greeks (Delta Δ and Gamma Γ):
+## Prerequisites (macOS)
+- C++17 toolchain (clang++ or g++)
+- make
+- Python 3 (optional, for plotting)
+  - Python packages: numpy, pandas, matplotlib (install via pip if needed)
 
-1. **Analytic formulas** - Exact closed-form solutions (ground truth)
-2. **Forward finite differences (FD)** - Classical numerical differentiation  
-3. **Complex-step differentiation (CS)** - Advanced technique using complex arithmetic
-
-The implementation demonstrates that **complex-step differentiation vastly outperforms classical finite differences** for smooth functions in quantitative finance applications.
-
-## Project Structure
-
-### Provided Header Files
-```cpp
-#include "bs_call_price.h"           // Stable BS pricing functions
-#include "InverseCumulativeNormal.h" // (Reference, not used here)
+Install Python deps:
+```bash
+python3 -m pip install --user numpy pandas matplotlib
 ```
 
-**bs_call_price.h** contains:
-- `Phi_real(z)` - Standard normal CDF via erfc (numerically stable)
-- `phi(z)` - Standard normal PDF  
-- `bs_price_call(S, K, r, q, sigma, T)` - European call pricing
-
-### Implementation Files
-- **`bs_greeks_validation.cpp`** - Main implementation
-  - Properly includes header files with `#include "bs_call_price.h"`
-  - Uses `using namespace std;` for clean syntax
-  - Implements all three differentiation methods
-  - Runs validation sweeps
-
-### Build System
-- **`Makefile`** - Simple build automation
-  ```bash
-  make          # Compile
-  make run      # Compile and run
-  make analyze  # Generate plots
-  make clean    # Clean up
-  ```
-
-### Output Files
-- **`bs_fd_vs_complex_scenario1.csv`** - Validation data (ATM)
-- **`bs_fd_vs_complex_scenario2.csv`** - Validation data (near-expiry)
-- **`greeks_error_analysis.png`** - Error plots
-
-### Documentation
-- **`README.md`** - This file (quick start)
-- **`DESIGN.md`** - Comprehensive analysis
-- **`SUMMARY.md`** - Quick reference
-- **`CHECKLIST.md`** - Submission verification
-
-## Quick Start
-
-### Option 1: Using Make (Recommended)
+## Quick Build & Run (recommended)
+From repository root (/Users/mananaggarwal/Downloads/files-3):
 
 ```bash
 # Compile
 make
 
-# Run validation
+# Run validation (produces CSVs and greeks_error_analysis.png)
 make run
 
-# Generate plots
+# Generate / refresh plots from CSV (if needed)
 make analyze
 
-# Clean up
+# Clean build artifacts and outputs
 make clean
 ```
 
-### Option 2: Manual Compilation
+make targets:
+- `make` — compile binary (C++17, -O3)
+- `make run` — run validation program and write CSV output:
+  - bs_fd_vs_complex_scenario1.csv
+  - bs_fd_vs_complex_scenario2.csv
+  - greeks_error_analysis.png
+- `make analyze` — run analyze_results.py to generate/refresh plots
+- `make clean` — remove binaries and generated files
+
+## Manual (no Makefile)
+Compile and run manually:
 
 ```bash
-# Compile (ensure bs_call_price.h is in same directory)
-g++ -std=c++17 -O3 -o bs_greeks_validation bs_greeks_validation.cpp -lm
+# Compile (example using g++)
+g++ -std=c++17 -O3 -o bs_greeks_validation bs_greeks_validation.cpp
 
-# Run
+# Run program
 ./bs_greeks_validation
 
-# Analyze (optional)
+# Generate plots with Python
 python3 analyze_results.py
 ```
 
-## Code Structure
-
-### Clean Header Usage
-
-```cpp
-// Main file: bs_greeks_validation.cpp
-#include <iostream>
-#include <complex>
-// ... standard libraries ...
-
-// Include provided headers - no need to redefine functions!
-#include "bs_call_price.h"
-
-using namespace std;
-
-// Now we can directly use:
-// - Phi_real(z)
-// - phi(z) 
-// - bs_price_call(S, K, r, q, sigma, T)
+Open the generated plot on macOS:
+```bash
+open greeks_error_analysis.png
 ```
 
-### Key Components
+## Files produced
+- bs_fd_vs_complex_scenario1.csv — scenario 1 validation data
+- bs_fd_vs_complex_scenario2.csv — scenario 2 validation data
+- greeks_error_analysis.png — combined error plots
+- bs_greeks_validation (binary)
 
-**1. Type-Dispatched Φ_t (for complex-step)**
-```cpp
-double Phi_t(double z);              // Uses Phi_real from header
-complex<double> Phi_t(complex z);    // Taylor expansion for complex
-```
+## Notes
+- Ensure `bs_call_price.h` is present in the same directory when building.
+- The Python script expects the CSVs produced by the run step.
+- For reproducibility, use the provided Makefile; manual steps match the Makefile's behavior.
 
-**2. Templated Black-Scholes**
-```cpp
-template<class T>
-T bs_price_call_t(T S, T K, T r, T q, T sigma, T Tmat);
-// Works with T=double and T=complex<double>
-```
+# Black‑Scholes Greeks — Consolidated Validation Study
 
-**3. Three Greek Methods**
-```cpp
-AnalyticGreeks compute_analytic_greeks(...);  // Exact formulas
-FDGreeks compute_fd_greeks(...);              // Finite differences
-CSGreeks compute_cs_greeks(...);              // Complex-step
-```
+This document consolidates the core findings, tables, short explanations, and plotting scripts from the Black‑Scholes Greeks validation comparing Analytic, Forward Finite Differences (FD) and Complex‑Step (CS) methods for Delta (Δ) and Gamma (Γ).
 
-## Results Summary
+## 1. Overview
+Three methods were validated:
+- Analytic (closed form) — ground truth.
+- Forward finite differences (FD) — classical numerical differentiation.
+- Complex‑step differentiation (CS) — uses complex arithmetic to avoid catastrophic cancellation.  
+Major conclusion: CS (including the 45° CS method for second derivatives) is substantially more accurate and robust than FD in all tested scenarios.
 
-### Accuracy Comparison
+## 2. Test Scenarios
+| Scenario | S | K | r | q | σ | T | Δ (analytic) | Γ (analytic) |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 (ATM) | 100 | 100 | 0 | 0 | 0.20 | 1.0 | 0.5398 | 0.0198 |
+| 2 (Near‑expiry, stress) | 100 | 100 | 0 | 0 | 0.01 | 1/365 | 0.5001 | 7.6218 |
 
-| Greek | Method       | Best Error (S1) | Best Error (S2) | Winner |
-| Δ     | FD           | 2.7×10⁻¹⁰       | 5.7×10⁻⁸        |        |
-| Δ     | **CS**       | **~10⁻¹⁵**      | **7.2×10⁻¹⁵**   | ✓      |
-| Γ     | FD           | 2.5×10⁻⁷.       | 2.5×10⁻⁶        |        |
-| Γ     | CS(real)     | 2.0×10⁻²        | 6.59            |       |
-| Γ     | **CS (45°)** | **1.9×10⁻¹²**   | **5.1×10⁻⁹**    | ✓      |
+Short note: Scenario 2 is ill‑conditioned (low vol + short time), amplifying Gamma and numerical sensitivity.
 
-**Complex-step achieves 3-5 orders of magnitude better accuracy!**
+## 3. Best Achieved Accuracy (summary tables)
 
-### Key Findings
+Delta (Δ) best absolute errors:
+| Method | Scenario 1 | Scenario 2 | Winner |
+|---|---:|---:|:---:|
+| FD | 2.7×10⁻¹⁰ | 5.7×10⁻⁸ | |
+| CS | ≈ 1×10⁻¹⁵ (machine eps) | 7.2×10⁻¹⁵ | CS ✓ |
 
-**Delta**: CS reaches machine epsilon, FD limited to ~10⁻¹⁰  
-**Gamma**: CS 45° method is 100,000× more accurate than FD  
-**Robustness**: CS works across 12 orders of magnitude of step sizes  
-**Simplicity**: FD requires careful tuning, CS "just works"  
+Gamma (Γ) best absolute errors:
+| Method | Scenario 1 | Scenario 2 | Winner |
+|---|---:|---:|:---:|
+| FD | 2.5×10⁻⁷ | 2.5×10⁻⁶ | |
+| CS (real part) | 2.0×10⁻² | 6.59 | (poor) |
+| CS (45°) | 1.9×10⁻¹² | 5.1×10⁻⁹ | CS (45°) ✓ |
 
-## Test Scenarios
+Short explanation: CS for Delta extracts the imaginary part and avoids cancellation; the 45° CS variant for Gamma attains O(h⁴) truncation and far better accuracy than FD.
 
-### Scenario 1: ATM Reference
-```
-S = 100, K = 100, r = 0, q = 0
-σ = 20%, T = 1 year
-Analytic: Δ = 0.5398, Γ = 0.0198
-```
+## 4. Recommended Settings (production)
+Delta:
+- Method: Complex‑step
+- Step: h_rel = 1e‑8 (h = h_rel * S)
+- Formula: Δ ≈ Im[C(S + i·h)] / h
+- Expected accuracy: ~machine epsilon (~1e‑15)
 
-### Scenario 2: Near-Expiry Stress Test
-```
-S = 100, K = 100, r = 0, q = 0
-σ = 1%, T = 1/365 (one day)
-Analytic: Δ = 0.5001, Γ = 7.6218
-```
+Gamma:
+- Method: Complex‑step 45° variant
+- Step: h_rel = 1e‑6 (scenario dependent; 1e‑8 for stress)
+- ω = (1 + i)/√2
+- Formula: Γ ≈ Im[C(S + h·ω) + C(S − h·ω)] / h²
+- Expected accuracy: 1e‑9 to 1e‑12
 
-## Mathematical Background
+If complex arithmetic is unavailable, use FD with carefully tuned h_rel (≈1e‑8 for Δ, ≈1e‑6 for Γ); expect substantially worse accuracy.
 
-### Analytic Greeks (from Black-Scholes)
-
-```
-Delta = e^(-qT) · Φ(d₁)
-Gamma = e^(-qT) · φ(d₁) / (S · σ · √T)
-
-where:
-d₁ = [ln(S/K) + (r-q+σ²/2)T] / (σ√T)
-```
-
-### Forward Finite Differences
-
-```
-Delta_FD = [C(S+h) - C(S)] / h                    O(h)
-Gamma_FD = [C(S+2h) - 2C(S+h) + C(S)] / h²       O(h²)
-```
-
-**Problem**: Catastrophic cancellation - subtracting nearly-equal numbers
-
-### Complex-Step Differentiation
-
-**Key insight**: Extract derivative from imaginary part
-
-```
-Delta_CS = Im[C(S+ih)] / h                        O(h²), NO cancellation
-Gamma_45 = Im[C(S+hω) + C(S-hω)] / h²           O(h⁴), ω = e^(iπ/4)
-```
-
-**Why it works**: No subtraction of nearly-equal reals!
-
-## CSV Output Format
-
-Each CSV contains **25 data rows + 1 header**:
-
-```csv
+## 5. CSV / Data format (used for analysis)
+Each CSV contains 26 rows: header + 25 h values (log spaced).
+Header columns:
 h_rel,h,
 Delta_analytic,Delta_fd,Delta_cs,err_D_fd,err_D_cs,
 Gamma_analytic,Gamma_fd,Gamma_cs_real,Gamma_cs_45,
 err_G_fd,err_G_cs_real,err_G_cs_45
-```
 
-Step sizes range from h_rel = 10⁻¹⁶ to 10⁻⁴ (logarithmic spacing).
+Files:
+- bs_fd_vs_complex_scenario1.csv
+- bs_fd_vs_complex_scenario2.csv
 
-## Practical Recommendations
+## 6. Plotting (generate the requested plots)
+Below is a compact Python script to load the CSVs and create the 4‑panel error plot used in the study. Save as `analyze_results.py` and run with Python 3 (requires numpy, pandas, matplotlib).
 
-### For Delta (Δ)
-```cpp
-// Use complex-step, h_rel = 10⁻⁸
-double h = 1e-8 * S;
-complex<double> S_ih(S, h);
-complex<double> price = bs_price_call_t(S_ih, K, r, q, sigma, T);
-double delta = price.imag() / h;
-// Expected accuracy: ~10⁻¹⁵
-```
+```python
+#!/usr/bin/env python3
+# analyze_results.py — produce 4-panel error plots for Delta and Gamma (scenario1 & scenario2)
+https://file+.vscode-resource.vscode-cdn.net/Users/mananaggarwal/Downloads/files-3/greeks_error_analysis.png?version%3D1762693236503
 
-### For Gamma (Γ)
-```cpp
-// Use 45° complex-step method
-double h = 1e-6 * S;  // Adjust based on scenario
-double sqrt2 = sqrt(2.0);
-complex<double> omega(1.0/sqrt2, 1.0/sqrt2);
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-complex<double> C_plus = bs_price_call_t(S + h*omega, ...);
-complex<double> C_minus = bs_price_call_t(S - h*omega, ...);
-double gamma = (C_plus + C_minus).imag() / (h*h);
-// Expected accuracy: ~10⁻¹²
-```
+def plot_csv(path, ax_delta, ax_gamma, title):
+    df = pd.read_csv(path)
+    h_rel = df['h_rel'].values
+    # Delta errors
+    err_D_fd = df['err_D_fd'].values
+    err_D_cs = df['err_D_cs'].values
+    # Gamma errors
+    err_G_fd = df['err_G_fd'].values
+    err_G_cs_real = df['err_G_cs_real'].values
+    err_G_cs_45 = df['err_G_cs_45'].values
 
-## Dependencies
+    ax_delta.loglog(h_rel, err_D_fd, '-o', label='FD', markersize=4)
+    ax_delta.loglog(h_rel, err_D_cs, '-o', label='CS', markersize=4)
+    ax_delta.set_xlabel('h_rel')
+    ax_delta.set_ylabel('abs error (Delta)')
+    ax_delta.set_title(title + ' — Delta')
+    ax_delta.grid(True, which='both', ls=':', alpha=0.6)
+    ax_delta.legend()
 
-- **C++17 compiler** (g++, clang++)
-- **Standard library**: `<cmath>`, `<complex>`, `<iostream>`, etc.
-- **Provided headers**: `bs_call_price.h` (must be in same directory)
-- **Python 3** (optional, for plot generation)
-  - pandas, matplotlib, numpy
+    ax_gamma.loglog(h_rel, err_G_fd, '-o', label='FD', markersize=4)
+    ax_gamma.loglog(h_rel, err_G_cs_real, '-o', label='CS real', markersize=4)
+    ax_gamma.loglog(h_rel, err_G_cs_45, '-o', label='CS 45°', markersize=4)
+    ax_gamma.set_xlabel('h_rel')
+    ax_gamma.set_ylabel('abs error (Gamma)')
+    ax_gamma.set_title(title + ' — Gamma')
+    ax_gamma.grid(True, which='both', ls=':', alpha=0.6)
+    ax_gamma.legend()
 
-## File Checklist
-
-### Source Code
-- [x] `bs_greeks_validation.cpp` - Main implementation
-- [x] `bs_call_price.h` - Provided pricing functions
-- [x] `InverseCumulativeNormal.h` - Provided (reference)
-- [x] `analyze_results.py` - Visualization creator
-- [x] `Makefile` - Build automation
-
-
-### Data Files
-- [x] `bs_fd_vs_complex_scenario1.csv` - 26 rows (25 data + header)
-- [x] `bs_fd_vs_complex_scenario2.csv` - 26 rows (25 data + header)
-
-### Documentation
-- [x] `README.md` - This file
-- [x] `DESIGN.md` - Comprehensive validation report
-- [x] `SUMMARY.md` - Quick reference
-- [x] `CHECKLIST.md` - Submission verification
-
-### Visualizations
-- [x] `greeks_error_analysis.png` - 4-panel error plots
-
-
-**Bottom Line**: Complex-step differentiation provides 10,000× better accuracy than finite differences while being easier to implement and more robust to step-size choice. It should be the standard approach for numerical differentiation in quantitative finance.
+if __name__ == '__main__':
+    files = [
+        ('bs_fd_vs_complex_scenario1.csv', 'Scenario 1 (ATM)'),
+        ('bs_fd_vs_complex_scenario2.csv', 'Scenario 2 (Near‑expiry)'),
+    ]
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8))
+    for (csv, title), (axD, axG) in zip(files, axes):
+        plot_csv(csv, axD, axG, title)
+    plt.tight_layout()
+    plt.savefig('greeks_error_analysis.png', dpi=200)
+    print('Saved greeks_error_analysis.png')
