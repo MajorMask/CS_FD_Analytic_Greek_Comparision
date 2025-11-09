@@ -134,5 +134,4 @@ Files:
 - bs_fd_vs_complex_scenario2.csv
 
 ## 6. Plotting (generated the requested plots using `analyze_results.py`)
-Below is a compact Python script to load the CSVs and create the 4‑panel error plot used in the study. Save as `analyze_results.py` and run with Python 3 (requires numpy, pandas, matplotlib).
 ![Plot](https://github.com/MajorMask/CS_FD_Analytic_Greek_Comparision/blob/main/greeks_error_analysis.png)
